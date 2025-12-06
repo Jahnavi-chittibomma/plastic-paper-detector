@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Plastic vs Paper Detector</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:18px;display:flex;gap:20px;flex-direction:column;align-items:center}
+    .card{border-radius:10px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.08);max-width:720px;width:100%}
+    #result{font-size:18px;font-weight:600;margin-top:10px}
+    #coins-box{color:green;font-weight:700;margin-top:8px}
+    video, img{max-width:320px;border-radius:8px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <h1>Plastic vs Paper Detector</h1>
+
+  <div class="card">
+    <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <div>
+        <input id="file-input" type="file" accept="image/*" />
+        <div style="margin-top:8px">or</div>
+        <button id="webcam-btn">Use Webcam</button>
+        <button id="stop-webcam" disabled>Stop Webcam</button>
+      </div>
+
+      <div>
+        <video id="webcam" autoplay playsinline style="display:none"></video>
+        <img id="preview" src="" alt="preview" style="display:none" />
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <button id="classify-btn">Classify</button>
+      <div id="result"></div>
+      <div id="coins-box"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <script>
+    // --------------------------
+    // CONFIGURE THIS
+    // Replace MODEL_URL with your Teachable Machine model folder (ensure trailing slash)
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/XXXX/"; // <-- REPLACE
+    const PLACEHOLDER_DOMAIN = "https://example.com"; // <-- REPLACE when you deploy
+    // --------------------------
+
+    let model, maxPredictions;
+    const fileInput = document.getElementById('file-input');
+    const preview = document.getElementById('preview');
+    const webcamEl = document.getElementById('webcam');
+    const webcamBtn = document.getElementById('webcam-btn');
+    const stopWebcamBtn = document.getElementById('stop-webcam');
+    const classifyBtn = document.getElementById('classify-btn');
+    const resultDiv = document.getElementById('result');
+    const coinsBox = document.getElementById('coins-box');
+
+    async function initModel(){
+      try{
+        const modelURL = MODEL_URL + "model.json";
+        const metadataURL = MODEL_URL + "metadata.json";
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+        console.log('Model loaded', maxPredictions);
+      }catch(e){
+        alert('Error loading model. Please check MODEL_URL in index.html');
+        console.error(e);
+      }
+    }
+
+    function dataURLToImage(dataUrl){
+      const img = new Image();
+      img.src = dataUrl;
+      return img;
+    }
+
+    fileInput.addEventListener('change', (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = function(ev){
+        preview.src = ev.target.result;
+        preview.style.display = 'block';
+        webcamEl.style.display = 'none';
+      }
+      reader.readAsDataURL(f);
+    });
+
+    let webcamStream = null;
+    webcamBtn.addEventListener('click', async ()=>{
+      try{
+        webcamStream = await navigator.mediaDevices.getUserMedia({video:true});
+        webcamEl.srcObject = webcamStream;
+        webcamEl.style.display = 'block';
+        preview.style.display = 'none';
+        stopWebcamBtn.disabled = false;
+      }catch(e){alert('Cannot access webcam');console.error(e)}
+    });
+
+    stopWebcamBtn.addEventListener('click', ()=>{
+      if(webcamStream){
+        webcamStream.getTracks().forEach(t=>t.stop());
+        webcamEl.srcObject = null;
+        webcamEl.style.display = 'none';
+        stopWebcamBtn.disabled = true;
+      }
+    });
+
+    classifyBtn.addEventListener('click', async ()=>{
+      if(!model){
+        await initModel();
+        if(!model) return;
+      }
+
+      let inputElem = null;
+      if(preview.style.display !== 'none'){
+        inputElem = preview;
+      }else if(webcamEl.style.display !== 'none'){
+        inputElem = webcamEl;
+      }else{
+        alert('Choose an image or enable webcam first');
+        return;
+      }
+
+      // Run prediction
+      const prediction = await model.predict(inputElem, false);
+      // Sort by probability
+      prediction.sort((a,b)=>b.probability-a.probability);
+      const top = prediction[0];
+      resultDiv.textContent = Detected: ${top.className} (confidence ${Math.round(top.probability*100)}%);
+
+      // Generate random coins between 5 and 50
+      const coins = Math.floor(Math.random() * (50 - 5 + 1)) + 5;
+      coinsBox.textContent = Coins awarded: ${coins};
+
+      // Save coins in localStorage (so claim page can read) and redirect to qr page
+      localStorage.setItem('detectedCoins', coins);
+      localStorage.setItem('detectedClass', top.className);
+
+      // Build QR payload (contains value + URL)
+      const claimUrl = ${PLACEHOLDER_DOMAIN}/claim.html?coins=${coins};
+      const qrPayload = Coins: ${coins} | ${claimUrl};
+
+      // Pass payload to qr page via URL parameter (encoded)
+      const encoded = encodeURIComponent(qrPayload);
+      // Wait briefly then redirect
+      setTimeout(()=>{
+        window.location.href = qr.html?data=${encoded};
+      }, 900);
+    });
+
+    // Initialize nothing by default - model will load on first classify click.
+  </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Claim Coins</title>
+  <style>
+    body{font-family:system-ui,Arial;display:flex;flex-direction:column;align-items:center;padding:22px}
+    .card{padding:18px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.08);max-width:700px;width:100%;text-align:center}
+    .coins{font-size:40px;color:green;font-weight:700}
+  </style>
+</head>
+<body>
+  <h1>Claim Page</h1>
+  <div class="card">
+    <div id="message">Loading your coins…</div>
+    <div class="coins" id="coinsVal"></div>
+    <p style="margin-top:12px;color:#555">This page reads coins either from the URL parameter <code>?coins=</code> or from localStorage if available.</p>
+  </div>
+
+  <script>
+    function getParam(name){
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    // Priority: URL param (claimed) -> localStorage (if user came from classifier) -> none
+    const coinsFromUrl = getParam('coins');
+    const coinsFromStorage = localStorage.getItem('detectedCoins');
+    const detectedClass = localStorage.getItem('detectedClass');
+
+    let finalCoins = null;
+    if(coinsFromUrl){
+      finalCoins = coinsFromUrl;
+      document.getElementById('message').textContent = 'Congrats — you scanned a QR with the claim link!';
+      // Optional: clear localStorage after claim
+      localStorage.removeItem('detectedCoins');
+      localStorage.removeItem('detectedClass');
+    } else if(coinsFromStorage){
+      finalCoins = coinsFromStorage;
+      document.getElementById('message').textContent = 'You arrived here directly from the detector.';
+      // Optional: clear storage after showing
+      // localStorage.removeItem('detectedCoins');
+    } else {
+      document.getElementById('message').textContent = 'No coins found. Make a detection first.';
+    }
+
+    if(finalCoins){
+      document.getElementById('coinsVal').textContent = finalCoins + ' Coins';
+    }
+  </script>
+</body>
+</html>

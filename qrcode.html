@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QR Code - Claim Coins</title>
+  <style>
+    body{font-family:system-ui,Arial;display:flex;flex-direction:column;align-items:center;padding:22px}
+    .card{padding:18px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.08);max-width:700px;width:100%;text-align:center}
+    #qrcode{margin:18px auto}
+    a.button{display:inline-block;padding:10px 14px;border-radius:8px;text-decoration:none;background:#2b6cb0;color:white}
+  </style>
+</head>
+<body>
+  <h1>QR Code — Claim Your Coins</h1>
+  <div class="card">
+    <div id="info">Generating QR code…</div>
+    <div id="qrcode"></div>
+    <div style="margin-top:12px">
+      <a id="open-claim" class="button" href="#">Open Claim Page</a>
+    </div>
+    <p style="margin-top:10px;color:#555">If your phone QR scanner reads the data, it will show the value and link.</p>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    function getParam(name){
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    const raw = getParam('data');
+    if(!raw){
+      document.getElementById('info').textContent = 'No QR data found. Try running classification first.';
+    } else {
+      const data = decodeURIComponent(raw);
+      document.getElementById('info').textContent = data;
+
+      // Try to extract URL inside payload
+      const urlMatch = data.match(/https?:\/\/[^\s|]+/);
+      const claimUrl = urlMatch ? urlMatch[0] : 'claim.html';
+      document.getElementById('open-claim').href = claimUrl;
+
+      // Create QR code
+      const qrcodeEl = document.getElementById('qrcode');
+      qrcodeEl.innerHTML = '';
+      new QRCode(qrcodeEl, {
+        text: data,
+        width: 220,
+        height: 220
+      });
+    }
+  </script>
+</body>
+</html
